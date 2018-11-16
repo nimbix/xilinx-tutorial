@@ -23,7 +23,7 @@ DSA=""
 JARVICE_MACHINE=""
 XCLBIN_PROGRAM=""
 XCLBIN_REMOVE=""
-XCL_RUNTIME=""
+XRT_RUNTIME=""
 DOCKER_REPO=""
 DOCKER_TAG=""
 while getopts "hf:m:p:R:r" opt; do
@@ -44,7 +44,7 @@ while getopts "hf:m:p:R:r" opt; do
             XCLBIN_REMOVE=$OPTARG
             ;;
         r)
-            XCL_RUNTIME=$OPTARG
+            XRT_RUNTIME=$OPTARG
             ;;
         ?)
             usage
@@ -72,20 +72,20 @@ if [ -z $XCLBIN_REMOVE ]; then
     printf "WARNING: Xilinx protection bitstreams not set\n"
     printf "\t Setting XCLBIN_REMOVE := ${XCLBIN_REMOVE}\n"
 fi
-if [ -z $XCL_RUNTIME ]; then
-    XCL_RUNTIME=xrt_201802.2.1.83_16.04.deb
+if [ -z $XRT_RUNTIME ]; then
+    XRT_RUNTIME=201802.2.1.83_16.04
     printf "WARNING: Installation for Xilinx runtime not set\n"
-    printf "\t Setting XCL_RUNTIME := ${XCL_RUNTIME}\n"
+    printf "\t Setting XRT_RUNTIME := ${XRT_RUNTIME}\n"
 fi
 # Check for correct file extensions 
 if [ "${XCLBIN_PROGRAM##*.}" = "*.xclbin" ]; then
     printf "ERROR: bitstream must be *.xclbin file\n"
     exit -1
 fi
-if [ "${XCL_RUNTIME##*.}" = "*.deb" ]; then
-    printf "ERROR: Xilinx runtime must be *.deb file\n"
-    exit -1
-fi
+# Update Dockerfile for XRT runtime verion
+sed "s/<xrt-runtime>/$XRT_RUNTIME/g" ${workspace}/Dockerfile > \
+        ${workspace}/Dockerfile.tmp
+
 DOCKER_REPO=$1
 DOCKER_TAG=$2
 if [ -z ${DOCKER_REPO} ] || [ -z ${DOCKER_TAG} ]; then
@@ -97,7 +97,9 @@ docker build --build-arg DSA=${DSA} \
     --build-arg JARVICE_MACHINE=${JARVICE_MACHINE} \
     --build-arg XCLBIN_PROGRAM=${XCLBIN_PROGRAM} \
     --build-arg XCLBIN_REMOVE=${XCLBIN_REMOVE} \
-    --build-arg XCL_RUNTIME=${XCL_RUNTIME} \
+    --file ${workspace}/Dockerfile.tmp \
     -t ${DOCKER_REPO}:${DOCKER_TAG} ${workspace} 
 
 docker push ${DOCKER_REPO}:${DOCKER_TAG}
+
+rm ${workspace}/Dockerfile.tmp

@@ -2,7 +2,7 @@
 
 usage(){
     echo
-    echo "build-xcl-examples.sh -u <jarvice-user> -k <jarvice-apikey> -d <dsa>"
+    echo "build-xcl-examples.sh  [-t <target>] -u <jarvice-user> -k <jarvice-apikey> -d <dsa>"
     echo
 }
 
@@ -18,7 +18,9 @@ OPTIND=1
 jarvice_user=""
 jarvice_apikey=""
 DSA=""
-while getopts "u:k:d:" opt; do
+# Default to SW emulation
+TARGET="sw_emu"
+while getopts "u:k:d:t:" opt; do
     case "$opt" in
         u)
             jarvice_user=$OPTARG
@@ -28,6 +30,9 @@ while getopts "u:k:d:" opt; do
             ;;
         d)
             DSA=$OPTARG
+            ;;
+        t)
+            TARGET=$OPTARG
             ;;
     esac
 done
@@ -105,7 +110,8 @@ OPTIND=1
 DSA=""
 repo_path=""
 kernels=""
-while getopts "d:r:k:" opt; do
+TARGET=""
+while getopts "d:r:k:t:" opt; do
     case "$opt" in
         d)
             DSA=$OPTARG
@@ -116,11 +122,15 @@ while getopts "d:r:k:" opt; do
         k)
             kernels=$OPTARG
             ;;
+        t)
+            TARGET=$OPTARG
+            ;;
     esac
 done
 [[ -z $DSA ]] && my_error "DSA not set\n"
 [[ -z $repo_path ]] && my_error "repo_path not set\n"
 [[ -z ${kernels} ]] && my_error "kernels not set\n"
+[[ -z ${TARGET} ]] && my_error "TARGET not set\n"
 retdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 workdir=$(mktemp -d)
 cd ${workdir}
@@ -130,7 +140,7 @@ git clone --depth 1 https://github.com/Xilinx/SDAccel_Examples
 source /opt/xilinx/xilinx-setup.sh
 # Compile SDAccel example kernels from ${kernels}
 for kernel in ${kernels}; do
-    make -C ${repo_path}/${kernel} DEVICES=${DSA}
+    make -C ${repo_path}/${kernel} DEVICES=${DSA} TARGET=${TARGET}
     cp ${repo_path}/${kernel}/xclbin/*.xclbin ${retdir}
     cp ${repo_path}/${kernel}/${kernel} ${retdir}
 done
@@ -145,7 +155,7 @@ cat ${workdir}/id_rsa.pub | ssh ${ssh_options} nimbix@${address} ${ssh_cmd}
 # Run SDAccel kernel build script in JARVICE job
 ssh_options+=" -i ${workdir}/id_rsa"
 ssh_cmd="cat > /tmp/run.sh && chmod +x /tmp/run.sh;" 
-ssh_cmd+="/tmp/run.sh -d ${DSA} -r ${repo_path} -k \"${kernels}\""
+ssh_cmd+="/tmp/run.sh -d ${DSA} -r ${repo_path} -k \"${kernels}\" -t ${TARGET}"
 cat ${workdir}/run.sh | ssh ${ssh_options} nimbix@${address} ${ssh_cmd} 
 # Transfer SDAccel binaries back to local computer
 mkdir -p ${retdir}/exe

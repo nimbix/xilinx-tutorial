@@ -1,4 +1,4 @@
-FROM ubuntu:xenial
+FROM nimbix/ubuntu-xrt:<xrt-runtime> 
 MAINTAINER Nimbix, Inc.
 # Xilinx Device Support Archive (DSA) for target FPGA
 ARG DSA
@@ -12,18 +12,7 @@ ENV XCLBIN_PROGRAM ${XCLBIN_PROGRAM}
 # FPGA bitstream to remove from container (*.xclbin format)
 ARG XCLBIN_REMOVE
 ENV XCLBIN_REMOVE ${XCLBIN_REMOVE}
-# Xilinx FPGA runtime
-ARG XCL_RUNTIME
-ENV XCL_RUNTIME ${XCL_RUNTIME}
-# Branch for JARVICE Desktop (leave null for default)
-ARG GIT_BRANCH
-ENV GIT_BRANCH ${GIT_BRANCH:-master}
-# JARVICE Desktop
-RUN apt-get -y update && \
-    apt-get -y install curl && \
-    curl -H 'Cache-Control: no-cache' \
-        https://raw.githubusercontent.com/nimbix/image-common/$GIT_BRANCH/install-nimbix.sh \
-        | bash -s -- --setup-nimbix-desktop --image-common-branch $GIT_BRANCH
+
 # Metadata for App
 ADD help.html /etc/NAE/help.html
 ADD AppDef.json /etc/NAE/AppDef.json
@@ -40,16 +29,11 @@ ADD xclbin/$DSA/$XCLBIN_REMOVE /opt/example/remove1.xclbin
 ADD xclbin/$DSA/$XCLBIN_REMOVE /opt/example/remove2.xclbin
 # Test host application
 ADD exe/vdotprod /opt/example/vdotprod
-# Install Xilinx runtime
-ADD $XCL_RUNTIME /opt/xilinx/xrt.deb
-RUN apt-get -y update && \
-    apt-get -y install /opt/xilinx/xrt.deb
-RUN rm /opt/xilinx/xrt.deb
 # Test script
-ADD run-test.sh /opt/xilinx/run-test.sh
-RUN chmod 777 /opt/xilinx/run-test.sh
+ADD run-test.sh /opt/example/run-test.sh
+RUN chmod 777 /opt/example/run-test.sh
 # Replace <tag> with docker --build-arg
-RUN sed -i "s/<xcl-dsa-name>/$DSA/g" /opt/xilinx/run-test.sh
+RUN sed -i "s/<xcl-dsa-name>/$DSA/g" /opt/example/run-test.sh
 
 # Expose port 22 for local JARVICE emulation in docker
 EXPOSE 22
