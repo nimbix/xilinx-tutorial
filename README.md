@@ -6,17 +6,17 @@ This project will go over how to:
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
-
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+ 
 ### Prerequisites
 
 This project can be used on Linux or Mac OSX w/ amd64 architecture. The following packages are required:
-* curl: command line tool for transferring data with URL syntax
-* jq: lightweight and flexible command-line JSON processor
-* docker: Linux container runtime 
+* `curl`: command line tool for transferring data with URL syntax
+* `jq`: lightweight and flexible command-line JSON processor
+* `docker`: Linux container runtime 
 
-*NOTE* requires accounts on:
-* [JARVICE](https://platform.jarvice.com/) to build SDAccel Examples and create JARVICE application using [PushToCompute](https://jarvice.readthedocs.io/en/latest/cicd/). Sign up [here](https://www.nimbix.net/contact-us/)
+**NOTE** require accounts on:
+* [JARVICE](https://platform.jarvice.com/) to build SDAccel Examples and create JARVICE application using [PushToCompute](https://jarvice.readthedocs.io/en/latest/cicd/). *Sign up [here](https://www.nimbix.net/contact-us/)*
 * Docker registry (e.g. [DockerHub](https://hub.docker.com/))
 
 #### Ubuntu/Debian
@@ -58,8 +58,11 @@ The `build-scripts/build-xcl-examples.sh` uses the [JARVICE API](https://jarvice
 ```
 
 `-t` SDAccel target flag. sw_emu (default) |hw_emu|hw
+
 `-u` JARVICE username
+
 `-k` JARVICE API key
+
 `-d` Xilinx DSA for target FPGA platform. xilinx_u250_xdma_201820_1 (current support for Alveo u250)
 
 ### Create Docker container for JARVICE application
@@ -74,9 +77,10 @@ docker login
 ```
 
 `<docker_repo>` e.g. nimbix/xilinx-tutorial
+
 `<docker_tag>` e.g. latest
 
-*Note* Pushing to a DockerHub repository that does not exist will create a *public* repo
+**Note** Pushing to a DockerHub repository that does not exist will create a **public** repo
 
 ## Create JARVICE application 
 
