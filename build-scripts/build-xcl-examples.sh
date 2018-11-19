@@ -14,6 +14,9 @@ my_error(){
     exit -1
 }
 
+which curl 2>&1 > /dev/null || my_error "curl not in PATH"
+which jq 2>&1 > /dev/null || my_error "jq not in PATH"
+
 OPTIND=1
 jarvice_user=""
 jarvice_apikey=""
@@ -41,10 +44,6 @@ done
 [[ -z ${jarvice_apikey} ]] && my_error "JARVICE apikey not set"
 [[ -z ${DSA} ]] && my_error "Xilinx DSA not set"
 workdir=$(mktemp -d)
-# Return files to Docker workspace
-retdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-# Use Docker workspace for return directory
-retdir="${retdir}/../docker-build"
 cd ${workdir}
 # JARVICE job for Xilinx SDAccel environment
 cat <<- EOF > ${workdir}/job.json
@@ -88,7 +87,7 @@ while true; do
     fi    
     sleep 15
 done
-sleep 5
+sleep 10
 # Get connection information for job
 rest_options="-H \"Content-Type: application/json\" -X GET"
 rest_options+=" ${jarvice_api}/connect?username=${jarvice_user}"
@@ -97,10 +96,13 @@ connect=$(curl ${rest_options} 2> /dev/null)
 address=$(echo ${connect} | jq -r .address)
 password=$(echo ${connect} | jq -r .password)
 # Example kernels to build from SDAccel Examples on GitHub
+# Kernels string uses | delimiter
 repo_path="SDAccel_Examples/getting_started/misc"
-kernels="vadd vdotprod"
+kernels="'sum_scan|vdotprod'"
 # Script to run on JARVICE
+# 'EOF' w/ '' prevents bash variable substitution
 cat <<- 'EOF' > ${workdir}/run.sh
+#!/bin/bash
 my_error(){
     printf "ERROR: $1"
     exit -1
@@ -111,7 +113,11 @@ DSA=""
 repo_path=""
 kernels=""
 TARGET=""
-while getopts "d:r:k:t:" opt; do
+jarvice_user=""
+jarvice_apikey=""
+jarvice_job=""
+retvault=""
+while getopts "d:r:k:t:u:K:j:R:" opt; do
     case "$opt" in
         d)
             DSA=$OPTARG
@@ -125,26 +131,59 @@ while getopts "d:r:k:t:" opt; do
         t)
             TARGET=$OPTARG
             ;;
+        u)
+            jarvice_user=$OPTARG
+            ;;
+        K)
+            jarvice_apikey=$OPTARG
+            ;;
+        j)
+            jarvice_job=$OPTARG
+            ;;
+        R)
+            retvault=$OPTARG
+            ;;
     esac
 done
 [[ -z $DSA ]] && my_error "DSA not set\n"
 [[ -z $repo_path ]] && my_error "repo_path not set\n"
 [[ -z ${kernels} ]] && my_error "kernels not set\n"
 [[ -z ${TARGET} ]] && my_error "TARGET not set\n"
-retdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+[[ -z ${jarvice_user} ]] && my_error "JARVICE user not set\n"
+[[ -z ${jarvice_apikey} ]] && my_error "JARVICE API key not set\n"
+[[ -z ${jarvice_job} ]] && my_error "JARVICE job number not set\n"
+[[ -z ${retvault} ]] && my_error "Return vault not set\n"
 workdir=$(mktemp -d)
 cd ${workdir}
+mkdir -p ${workdir}/exe
+mkdir -p ${workdir}/xclbin/${DSA}
 # Clone Xilinx SDAccel Example directory
 # NOTE: clone not using /data. Will not persist past session termination
 git clone --depth 1 https://github.com/Xilinx/SDAccel_Examples
 source /opt/xilinx/xilinx-setup.sh
 # Compile SDAccel example kernels from ${kernels}
-for kernel in ${kernels}; do
+# Turn kernels into an array
+kernels=(${kernels//|/ })
+# This loop will spawn parallel threads
+for kernel in ${kernels[@]}; do
+(   
     make -C ${repo_path}/${kernel} DEVICES=${DSA} TARGET=${TARGET}
-    cp ${repo_path}/${kernel}/xclbin/*.xclbin ${retdir}
-    cp ${repo_path}/${kernel}/${kernel} ${retdir}
+    cp ${repo_path}/${kernel}/xclbin/*.xclbin ${workdir}/xclbin/${DSA}
+    cp ${repo_path}/${kernel}/${kernel} ${workdir}/exe
+) &
 done
+wait
+sleep 5
+cd ${workdir}
+tar -czf ${DSA}.tar.gz exe xclbin
+# Return examples to user vault
+cp ${DSA}.tar.gz ${retvault}
 rm -rf ${workdir}
+# Send shutdown for job
+jarvice_shutdown="https://api.jarvice.com/jarvice/shutdown"
+jarvice_shutdown+="?username=${jarvice_user}&apikey=${jarvice_apikey}"
+jarvice_shutdown+="&number=${jarvice_job}"
+curl -X GET ${jarvice_shutdown} 
 EOF
 # Setup temporary ssh key with job
 ssh_options="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
@@ -152,37 +191,22 @@ ssh-keygen -f ${workdir}/id_rsa -N "" 2>&1 > /dev/null
 ssh_cmd="mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
 echo "Enter this password at prompt: ${password}"
 cat ${workdir}/id_rsa.pub | ssh ${ssh_options} nimbix@${address} ${ssh_cmd}
-# Run SDAccel kernel build script in JARVICE job
+# Use temporary ssh key to authenticate to JARVICE job
 ssh_options+=" -i ${workdir}/id_rsa"
-ssh_cmd="cat > /tmp/run.sh && chmod +x /tmp/run.sh;" 
-ssh_cmd+="/tmp/run.sh -d ${DSA} -r ${repo_path} -k \"${kernels}\" -t ${TARGET}"
+# Create unique vault directory for run
+ssh_cmd="mktemp -d --tmpdir=/data xcl_XXX"
+retdir=$(ssh ${ssh_options} nimbix@${address} ${ssh_cmd})
+echo "Job ${job} building ${retdir}/${DSA}.tar.gz"
+echo "Check JARVICE dashboard for status"
+# Copy run.sh to JARVICE job
+ssh_cmd="cat > /tmp/run.sh && chmod +x /tmp/run.sh" 
 cat ${workdir}/run.sh | ssh ${ssh_options} nimbix@${address} ${ssh_cmd} 
-# Transfer SDAccel binaries back to local computer
-mkdir -p ${retdir}/exe
-mkdir -p ${retdir}/xclbin/${DSA}
-scp_options="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
-scp_options+=" -i ${workdir}/id_rsa"
-scp ${scp_options} nimbix@${address}:/tmp/*.xclbin ${retdir}/xclbin/${DSA}
-for kernel in ${kernels}; do
-    scp ${scp_options} nimbix@${address}:/tmp/${kernel} ${retdir}/exe
-done
-# Send Shutdown to job
-rest_options="-H \"Content-Type: application/json\" -X GET"
-rest_options+=" ${jarvice_api}/shutdown?username=${jarvice_user}"
-rest_options+="&apikey=${jarvice_apikey}&number=${job}"
-curl ${rest_options} 2> /dev/null
-sleep 10
-# Check job status
-rest_options="-H \"Content-Type: application/json\" -X GET"
-rest_options+=" ${jarvice_api}/status?username=${jarvice_user}"
-rest_options+="&apikey=${jarvice_apikey}&number=${job}"
-status=$(curl ${rest_options} 2> /dev/null | jq -r .[].job_status)
-if [ "${status}" != "COMPLETED" ]; then
-    # Job still running. Send terminate
-    rest_options="-H \"Content-Type: application/json\" -X GET"
-    rest_options+=" ${jarvice_api}/terminate?username=${jarvice_user}"
-    rest_options+="&apikey=${jarvice_apikey}&number=${job}"
-    curl ${rest_options} 2> /dev/null
-fi    
+# Run SDAccel kernel build script in JARVICE job
+# nohup prevents build from stopping
+# run.sh will request shutdown using JARVICE API
+ssh_cmd="sh -c \"( ( nohup /tmp/run.sh -d ${DSA} -r ${repo_path} -k ${kernels}"
+ssh_cmd+=" -t ${TARGET} -u ${jarvice_user} -K ${jarvice_apikey} -j ${job}"
+ssh_cmd+=" -R ${retdir} > xcl.out 2> xcl.err ) & )\""
+ssh ${ssh_options} nimbix@${address} "${ssh_cmd}"
 # Remove work directory
 rm -rf ${workdir}

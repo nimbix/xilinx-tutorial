@@ -19,7 +19,6 @@ ADD AppDef.json /etc/NAE/AppDef.json
 RUN curl --fail -X POST -d @/etc/NAE/AppDef.json https://api.jarvice.com/jarvice/validate
 # FPGA platform 
 # Replace <tags> with docker --build-arg (s)
-RUN sed -i "s/<xcl-dsa-name>/$DSA/g" /etc/NAE/AppDef.json
 RUN sed -i "s/<jarvice-machine>/$JARVICE_MACHINE/g" /etc/NAE/AppDef.json
 # Test FPGA bitstream
 ADD xclbin/$DSA/$XCLBIN_PROGRAM /opt/example/test.xclbin 
