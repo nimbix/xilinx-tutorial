@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Example kernels to build from SDAccel Examples on GitHub
+# Kernels string uses | delimiter
+repo_path="SDAccel_Examples/getting_started/misc"
+kernels="'sum_scan|vdotprod'"
+
 usage(){
     echo
     echo "build-xcl-examples.sh  [-t <target>] -u <jarvice-user> -k <jarvice-apikey> -d <dsa>"
@@ -95,10 +100,6 @@ rest_options+="&apikey=${jarvice_apikey}&number=${job}"
 connect=$(curl ${rest_options} 2> /dev/null)
 address=$(echo ${connect} | jq -r .address)
 password=$(echo ${connect} | jq -r .password)
-# Example kernels to build from SDAccel Examples on GitHub
-# Kernels string uses | delimiter
-repo_path="SDAccel_Examples/getting_started/misc"
-kernels="'sum_scan|vdotprod'"
 # Script to run on JARVICE
 # 'EOF' w/ '' prevents bash variable substitution
 cat <<- 'EOF' > ${workdir}/run.sh
