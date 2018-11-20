@@ -1,0 +1,91 @@
+{
+    "name": "Xilinx FPGA Protection Test",
+    "description": "Ubuntu Linux w/ Xilinx FPGA runtime",
+    "author": "Nimbix, Inc.",
+    "licensed": true,
+    "classifications": [
+        "Software Development"
+    ],
+    "machines": [
+        "<jarvice-machine>"
+    ],
+    "vault-types": [
+        "FILE",
+        "BLOCK",
+        "BLOCK_ARRAY",
+        "OBJECT"
+    ],
+    "variable": {
+        "XCLBIN_BITSTREAM_PROGRAM": {
+            "name": "Xilinx FPGA binary",
+            "description": "Select user xclbin",
+            "userowned": false,
+            "inherit": false,
+            "required": false 
+        },
+        "XCLBIN_BITSTREAM_PROTECT": {
+            "name": "Xilinx FPGA binary to delete",
+            "description": "xclbin to remove",
+            "userowned": false,
+            "inherit": false,
+            "required": false
+        }
+    },
+    "commands": {
+        "Workflow": {
+            "path": "/sbin/init",
+            "interactive": true,
+            "name": "Launch Workflow w/ xclbin Protection",
+            "description": "Launch a FPGA workflow w/ bitstream protection. Session includes all boot services, including SSH (if installed).  Connection address and credentials will appear in your web browser once available. Unused FPGA kernel bistreams will be removed.",
+            "parameters": {
+                "XCLBIN_BITSTREAM_PROGRAM": {
+                    "name": "Xilinx FPGA binary",
+                    "description": "Select user xclbin",
+                    "type": "CONST",
+                    "required": true,
+                    "positional": false,
+                    "variable": true,
+                    "value": "/opt/example/test.xclbin"
+                },
+                "XCLBIN_BITSTREAM_PROTECT": {
+                    "name": "Xilinx FPGA binary to delete",
+                    "description": "xclbin to remove",
+                    "type": "CONST",
+                    "required": true,
+                    "positional": false,
+                    "variable": true,
+                    "value": "/opt/example/remove1.xclbin|/opt/example/remove2.xclbin"
+                } 
+            }
+        },
+        "Protect": {
+            "path": "/sbin/init",
+            "interactive": true,
+            "name": "Single xclbin Protection",
+            "description": "Launch a FPGA workflow w/ bitstream protection. Session includes all boot services, including SSH (if installed).  Connection address and credentials will appear in your web browser once available. Unused FPGA kernel bitstreams will remain in the session.",
+            "parameters": {
+                "XCLBIN_BITSTREAM_PROGRAM": {
+                    "name": "Xilinx FPGA binary",
+                    "description": "Select user xclbin",
+                    "type": "CONST",
+                    "required": true,
+                    "positional": false,
+                    "variable": true,
+                    "value": "/opt/example/test.xclbin"
+                }
+            }
+        },
+        "Standard": {
+            "path": "/sbin/init",
+            "interactive": true,
+            "name": "No xclbin Protection",
+            "description": "Launch a session with all boot services, including SSH (if installed).  Connection address and credentials will appear in your web browser once available.",
+            "parameters": {
+            }
+        }
+    },
+    "image": {
+        "type": "image/png",
+        "data": ""
+    }
+}

@@ -1,0 +1,4 @@
+exe
+*.xclbin
+*.deb
+*.tar.gz
