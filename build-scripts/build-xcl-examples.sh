@@ -191,23 +191,25 @@ ssh_options="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 ssh-keygen -f ${workdir}/id_rsa -N "" 2>&1 > /dev/null
 ssh_cmd="mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
 echo "Enter this password at prompt: ${password}"
-cat ${workdir}/id_rsa.pub | ssh ${ssh_options} nimbix@${address} ${ssh_cmd}
+cat ${workdir}/id_rsa.pub | ssh ${ssh_options} nimbix@${address} ${ssh_cmd} \
+        &> /dev/null
 # Use temporary ssh key to authenticate to JARVICE job
 ssh_options+=" -i ${workdir}/id_rsa"
 # Create unique vault directory for run
 ssh_cmd="mktemp -d --tmpdir=/data xcl_XXX"
-retdir=$(ssh ${ssh_options} nimbix@${address} ${ssh_cmd})
+retdir=$(ssh ${ssh_options} nimbix@${address} ${ssh_cmd} 2> /dev/null)
 echo "Job ${job} building ${retdir}/${DSA}.tar.gz"
 echo "Check JARVICE dashboard for status"
 # Copy run.sh to JARVICE job
 ssh_cmd="cat > /tmp/run.sh && chmod +x /tmp/run.sh" 
-cat ${workdir}/run.sh | ssh ${ssh_options} nimbix@${address} ${ssh_cmd} 
+cat ${workdir}/run.sh | ssh ${ssh_options} nimbix@${address} ${ssh_cmd} \
+        &> /dev/null
 # Run SDAccel kernel build script in JARVICE job
 # nohup prevents build from stopping
 # run.sh will request shutdown using JARVICE API
 ssh_cmd="sh -c \"( ( nohup /tmp/run.sh -d ${DSA} -r ${repo_path} -k ${kernels}"
 ssh_cmd+=" -t ${TARGET} -u ${jarvice_user} -K ${jarvice_apikey} -j ${job}"
 ssh_cmd+=" -R ${retdir} > xcl.out 2> xcl.err ) & )\""
-ssh ${ssh_options} nimbix@${address} "${ssh_cmd}"
+ssh ${ssh_options} nimbix@${address} "${ssh_cmd}" &> /dev/null
 # Remove work directory
 rm -rf ${workdir}
