@@ -35,7 +35,7 @@
         "Workflow": {
             "path": "/sbin/init",
             "interactive": true,
-            "name": "Launch Workflow w/ xclbin Protection",
+            "name": "Launch vdotprod w/ xclbin Protection",
             "description": "Launch a FPGA workflow w/ bitstream protection. Session includes all boot services, including SSH (if installed).  Connection address and credentials will appear in your web browser once available. Unused FPGA kernel bistreams will be removed.",
             "parameters": {
                 "XCLBIN_BITSTREAM_PROGRAM": {
