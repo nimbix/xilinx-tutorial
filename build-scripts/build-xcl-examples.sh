@@ -168,7 +168,7 @@ kernels=(${kernels//|/ })
 # This loop will spawn parallel threads
 for kernel in ${kernels[@]}; do
 (   
-    make -C ${repo_path}/${kernel} DEVICES=${DSA} TARGET=${TARGET}
+    make -C ${repo_path}/${kernel} all DEVICES=${DSA} TARGET=${TARGET}
     cp ${repo_path}/${kernel}/xclbin/*.xclbin ${workdir}/xclbin/${DSA}
     cp ${repo_path}/${kernel}/${kernel} ${workdir}/exe
 ) &
