@@ -160,7 +160,7 @@ mkdir -p ${workdir}/exe
 mkdir -p ${workdir}/xclbin/${DSA}
 # Clone Xilinx SDAccel Example directory
 # NOTE: clone not using /data. Will not persist past session termination
-git clone --depth 1 https://github.com/Xilinx/SDAccel_Examples
+git clone --single-branch --branch 2018.2_xdf --depth 1 https://github.com/Xilinx/SDAccel_Examples
 source /opt/xilinx/xilinx-setup.sh
 # Compile SDAccel example kernels from ${kernels}
 # Turn kernels into an array
@@ -209,7 +209,7 @@ cat ${workdir}/run.sh | ssh ${ssh_options} nimbix@${address} ${ssh_cmd} \
 # run.sh will request shutdown using JARVICE API
 ssh_cmd="sh -c \"( ( nohup /tmp/run.sh -d ${DSA} -r ${repo_path} -k ${kernels}"
 ssh_cmd+=" -t ${TARGET} -u ${jarvice_user} -K ${jarvice_apikey} -j ${job}"
-ssh_cmd+=" -R ${retdir} > xcl.out 2> xcl.err ) & )\""
+ssh_cmd+=" -R ${retdir} > ${retdir}/xcl.out 2> ${retdir}/xcl.err ) & )\""
 ssh ${ssh_options} nimbix@${address} "${ssh_cmd}" &> /dev/null
 # Remove work directory
 rm -rf ${workdir}
