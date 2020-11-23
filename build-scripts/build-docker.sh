@@ -26,7 +26,7 @@ XCLBIN_REMOVE=""
 XRT_RUNTIME=""
 DOCKER_REPO=""
 DOCKER_TAG=""
-while getopts "hf:m:p:R:r" opt; do
+while getopts "hf:m:p:R:r:" opt; do
     case "$opt" in
         h)
             usage
